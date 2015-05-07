@@ -15,6 +15,8 @@
 package version
 
 import (
+	"encoding/json"
+	"log"
 	"os"
 	"path"
 
@@ -23,7 +25,9 @@ import (
 )
 
 var (
-	Version = "2.0.4+git"
+	// MinClusterVersion is the min cluster version this etcd binary is compatible with.
+	MinClusterVersion = "2.0.0"
+	Version           = "2.1.0-alpha.0+git"
 )
 
 // WalVersion is an enum for versions of etcd logs.
@@ -36,6 +40,21 @@ const (
 	DataDir2_0Proxy DataDirVersion = "2.0 proxy"
 	DataDir2_0_1    DataDirVersion = "2.0.1"
 )
+
+type Versions struct {
+	Server string `json:"etcdserver"`
+	// TODO: etcdcluster version
+	// TODO: raft state machine version
+}
+
+// MarshalJSON returns the JSON encoding of Versions struct.
+func MarshalJSON() []byte {
+	b, err := json.Marshal(Versions{Server: Version})
+	if err != nil {
+		log.Panicf("version: cannot marshal versions to json (%v)", err)
+	}
+	return b
+}
 
 func DetectDataDir(dirpath string) (DataDirVersion, error) {
 	names, err := fileutil.ReadDir(dirpath)

@@ -129,7 +129,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The path must be valid at this point (we've parsed the request successfully).
-	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):]) {
+	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):], rr.Recursive) {
 		writeNoAuth(w)
 		return
 	}
@@ -358,7 +358,7 @@ func serveVersion(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	w.Write([]byte("etcd " + version.Version))
+	w.Write(version.MarshalJSON())
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to

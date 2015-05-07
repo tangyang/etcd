@@ -149,6 +149,17 @@ The security flags help to [build a secure etcd cluster][security].
 + Path to the peer server TLS trusted CA file.
 + default: none
 
+### Logging Flags
+
+##### -debug
++ Drop the default log level to DEBUG for all subpackages.
++ default: false (INFO for all packages)
+
+##### -log-package-levels
++ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG` 
++ default: none (INFO for all packages)
+
+
 ### Unsafe Flags
 
 Please be CAUTIOUS when using unsafe flags because it will break the guarantees given by the consensus protocol.
@@ -165,9 +176,9 @@ Follow the instructions when using these flags.
 + Print the version and exit.
 + default: false
 
-[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#static
-[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md
-[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#discovery
-[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/proxy.md
-[security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
-[restore]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#restoring-a-backup
+[build-cluster]: clustering.md#static
+[reconfig]: runtime-configuration.md
+[discovery]: clustering.md#discovery
+[proxy]: proxy.md
+[security]: security.md
+[restore]: admin_guide.md#restoring-a-backup

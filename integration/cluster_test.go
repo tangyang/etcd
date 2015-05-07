@@ -209,6 +209,67 @@ func TestForceNewCluster(t *testing.T) {
 	clusterMustProgress(t, c.Members[:1])
 }
 
+func TestAddMemberAfterClusterFullRotation(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 3)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// remove all the previous three members and add in three new members.
+	for i := 0; i < 3; i++ {
+		c.RemoveMember(t, uint64(c.Members[0].s.ID()))
+		c.waitLeader(t, c.Members)
+
+		c.AddMember(t)
+		c.waitLeader(t, c.Members)
+	}
+
+	c.AddMember(t)
+	c.waitLeader(t, c.Members)
+
+	clusterMustProgress(t, c.Members)
+}
+
+// Ensure we can remove a member then add a new one back immediately.
+func TestIssue2681(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 5)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.waitLeader(t, c.Members)
+
+	c.AddMember(t)
+	c.waitLeader(t, c.Members)
+	clusterMustProgress(t, c.Members)
+}
+
+// Ensure we can remove a member after a snapshot then add a new one back.
+func TestIssue2746(t *testing.T) {
+	defer afterTest(t)
+	c := NewCluster(t, 5)
+
+	for _, m := range c.Members {
+		m.SnapCount = 10
+	}
+
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// force a snapshot
+	for i := 0; i < 20; i++ {
+		clusterMustProgress(t, c.Members)
+	}
+
+	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.waitLeader(t, c.Members)
+
+	c.AddMember(t)
+	c.waitLeader(t, c.Members)
+	clusterMustProgress(t, c.Members)
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
@@ -359,8 +420,7 @@ func (c *cluster) HTTPMembers() []client.Member {
 
 func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
 	clusterStr := c.Members[0].Cluster.String()
-	idx := len(c.Members)
-	m := mustNewMember(t, c.name(idx), usePeerTLS)
+	m := mustNewMember(t, c.name(rand.Int()), usePeerTLS)
 	scheme := "http"
 	if usePeerTLS {
 		scheme = "https"
@@ -407,7 +467,7 @@ func (c *cluster) AddTLSMember(t *testing.T) {
 
 func (c *cluster) RemoveMember(t *testing.T, id uint64) {
 	// send remove request to the cluster
-	cc := mustNewHTTPClient(t, []string{c.URL(0)})
+	cc := mustNewHTTPClient(t, c.URLs())
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if err := ma.Remove(ctx, types.ID(id).String()); err != nil {
@@ -625,7 +685,7 @@ func (m *member) Launch() error {
 	m.s.SyncTicker = time.Tick(500 * time.Millisecond)
 	m.s.Start()
 
-	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.s.Cluster, m.s, m.s.RaftHandler())}
+	m.raftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.s.Cluster, m.s.RaftHandler())}
 
 	for _, ln := range m.PeerListeners {
 		hs := &httptest.Server{
